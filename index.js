@@ -1,8 +1,12 @@
 "use strict";
 var config = {
   type: Phaser.CANVAS,
-  width: 800,
-  height: 600,
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+    width: 800,
+    height: 600,
+  },
   physics: {
     default: "arcade",
     arcade: {
@@ -25,6 +29,8 @@ var score = 0;
 var scoreText;
 var bombs;
 var gameOver = false;
+var gameSpeed = 10;
+var ground;
 
 var game = new Phaser.Game(config);
 
@@ -41,14 +47,31 @@ function preload() {
 }
 
 function create() {
-  this.add.image(400, 300, "sky");
+  this.add.image(0, 300, "sky").setScale(2);
   platforms = this.physics.add.staticGroup();
+  //Plataforma que servirá de suelo del juego
+  ground = platforms.create(0, 568, "ground").setScale(2).refreshBody();
 
-  platforms.create(400, 568, "ground").setScale(2).refreshBody();
+  //Plataforma móvil, debe ser creada con físicas para agregar los colliders luego
+  var movingPlatform = this.physics.add
+    .image(600, 600, "ground")
+    .setImmovable(true);
 
-  platforms.create(600, 400, "ground");
-  platforms.create(50, 250, "ground");
-  platforms.create(750, 220, "ground");
+  //Quitamos gravedad para que la plataforma pueda moverse hacia arriba
+  movingPlatform.body.setAllowGravity(false);
+  //Añadimos colliders para los bordes del mundo del juego
+  movingPlatform.setCollideWorldBounds(true);
+
+  //Definimos un tween manager para el movimiento en el eje y
+  this.tweens.add({
+    targets: movingPlatform.body.velocity,
+    y: { from: 600, to: -250 },
+    duration: 2000,
+    ease: "Power1",
+    yoyo: true,
+    delay: 1000,
+    loop: -1,
+  });
 
   //Definimos el personaje
   player = this.physics.add.sprite(100, 450, "dude");
@@ -76,6 +99,8 @@ function create() {
   });
   player.setGravityY(200);
   this.physics.add.collider(player, platforms);
+
+  this.physics.add.collider(player, movingPlatform);
 
   cursors = this.input.keyboard.createCursorKeys();
 

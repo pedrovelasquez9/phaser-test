@@ -1,10 +1,11 @@
 "use strict";
+var worldWidth = 800;
 var config = {
   type: Phaser.CANVAS,
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
-    width: 800,
+    width: worldWidth,
     height: 600,
   },
   physics: {
@@ -31,7 +32,9 @@ var bombs;
 var gameOver = false;
 var gameSpeed = 10;
 var ground;
-
+var groundHeight = 32;
+var groundMaxHeight = groundHeight * 2;
+var defaultScene;
 var game = new Phaser.Game(config);
 
 function preload() {
@@ -44,10 +47,16 @@ function preload() {
     frameWidth: 32,
     frameHeight: 48,
   });
+  defaultScene = this;
 }
 
 function create() {
-  this.add.image(0, 300, "sky").setScale(2);
+  //configuración de cámara principal
+  this.cameras.main.setBounds(0, 0, 800 * 2, 600);
+
+  for (let i = 0; i < 2; i++) {
+    this.add.image(800 * i, 300, "sky").setScale(2);
+  }
   platforms = this.physics.add.staticGroup();
   //Plataforma que servirá de suelo del juego
   ground = platforms.create(0, 568, "ground").setScale(2).refreshBody();
@@ -76,7 +85,7 @@ function create() {
   //Definimos el personaje
   player = this.physics.add.sprite(100, 450, "dude");
   player.setBounce(0.2); //rebota tras saltar
-  player.setCollideWorldBounds(true); //no puede salir de los bordes del mundo creado
+  player.setCollideWorldBounds(false); //no puede salir de los bordes del mundo creado
 
   this.anims.create({
     key: "left", //nombre de la animación hacia la izquierda
@@ -121,7 +130,8 @@ function create() {
 
   bombs = this.physics.add.group();
   this.physics.add.collider(bombs, platforms);
-  this.physics.add.collider(player, bombs, hitBomb, null, this);
+  this.physics.add.collider(player, bombs, endGame, null, this);
+  this.cameras.main.startFollow(player, true);
 }
 
 function update() {
@@ -141,6 +151,11 @@ function update() {
 
   if (cursors.up.isDown && player.body.touching.down) {
     player.setVelocityY(-430);
+  }
+
+  //valida que el juego se termine si el player cae en un abismo
+  if (player.y > config.scale.height - groundHeight) {
+    endGame();
   }
 }
 
@@ -169,8 +184,8 @@ function collectStar(player, star) {
   }
 }
 
-function hitBomb(player, bomb) {
-  this.physics.pause();
+function endGame(player) {
+  defaultScene.physics.pause();
   player.setTint("0xff0000");
   player.anims.play("turn");
   gameOver = true;
